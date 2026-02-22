@@ -89,6 +89,15 @@ function Actions.actions()
         focus_window_9 = Fnutils.partial(Actions.PaperWM.windows.focusWindowAt, 9),
         focus_window_first = Actions.PaperWM.windows.focusWindowFirst,
         focus_window_last = Actions.PaperWM.windows.focusWindowLast,
+        move_window_to_position_1 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 1),
+        move_window_to_position_2 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 2),
+        move_window_to_position_3 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 3),
+        move_window_to_position_4 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 4),
+        move_window_to_position_5 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 5),
+        move_window_to_position_6 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 6),
+        move_window_to_position_7 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 7),
+        move_window_to_position_8 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 8),
+        move_window_to_position_9 = Fnutils.partial(Actions.PaperWM.windows.moveWindowToPosition, 9),
     }
 end
 

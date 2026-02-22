@@ -893,4 +893,111 @@ function Windows.moveWindow(window, frame)
     end)
 end
 
+---move the focused window to a n-th position in the current space
+---@param index Column index of the target window
+function Windows.moveWindowToPosition(index)
+    local focused_window = Window.focusedWindow()
+    if not focused_window then
+        Windows.PaperWM.logger.d("focused window not found")
+        return
+    end
+
+    Windows.moveSpecificWindowToPosition(focused_window, index)
+
+    -- center window
+    Windows.centerWindow()
+end
+
+local function moveSummonedWindowToFocusedColumn(remote_window, focused_index)
+    local current_index = Windows.PaperWM.state.windowIndex(remote_window)
+    if not current_index then
+        Windows.PaperWM.logger.e("current index not found")
+        return false
+    end
+
+    if current_index.space ~= focused_index.space then
+        Windows.PaperWM.logger.d("window is on a different space, not moving")
+        return false
+    end
+
+    Windows.moveSpecificWindowToPosition(remote_window, focused_index.col, "right")
+    return true
+end
+
+local function maybeCenterSummonOrigin(focused_window)
+    local frame = focused_window:frame()
+    local screen_frame = focused_window:screen():frame()
+    if frame.x > (screen_frame.x + screen_frame.w / 2) then
+        Windows.centerWindow()
+    end
+end
+
+function Windows.summonWindow(remote_window)
+    local focused_window = Window.focusedWindow()
+    if not focused_window then
+        Windows.PaperWM.logger.d("focused window not found")
+        return
+    end
+    local focused_index = Windows.PaperWM.state.windowIndex(focused_window)
+    if not focused_index then
+        Windows.PaperWM.logger.d("focused index not found")
+        return
+    end
+
+    if not moveSummonedWindowToFocusedColumn(remote_window, focused_index) then
+        return
+    end
+
+    maybeCenterSummonOrigin(focused_window)
+    remote_window:raise():focus()
+end
+
+function Windows.moveSpecificWindowToPosition(window, target_column, lr)
+    local current_index = Windows.PaperWM.state.windowIndex(window)
+    if not current_index then
+        Windows.PaperWM.logger.e("current index not found")
+        return
+    end
+
+    local current_space = current_index.space
+
+    local columns = Windows.PaperWM.state.windowList(current_space)
+    if not columns then
+        Windows.PaperWM.logger.ef("no windows on space %d", current_space)
+        return
+    end
+
+    local current_column = current_index.col
+    if not columns[current_column] then
+        Windows.PaperWM.logger.ef("no current column %d on space %d", current_column, current_space)
+        return
+    end
+
+    if target_column < current_column and lr == "right" then
+        target_column = target_column + 1 -- insert to the right of the target column
+    end
+    if target_column > current_column and lr == "left" then
+        target_column = target_column - 1 -- insert to the left of the target column
+    end
+
+    if not columns[target_column] then
+        Windows.PaperWM.logger.ef("no target column %d on space %d", target_column, current_space)
+        return
+    end
+
+    -- move focused window to target column location
+    local current_frame = window:frame()
+    local target_frame = columns[target_column][1]:frame()
+    current_frame.x = target_frame.x
+    Windows.moveWindow(window, current_frame)
+
+    -- remove then insert column of windows to swap
+    local windows = table.remove(columns, current_column)
+    table.insert(columns, target_column, windows)
+
+    -- update layout
+    Windows.PaperWM:tileSpace(current_space)
+end
+
+
 return Windows
