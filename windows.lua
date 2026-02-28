@@ -908,22 +908,6 @@ function Windows.moveWindowToPosition(index)
     Windows.centerWindow()
 end
 
-local function moveSummonedWindowToFocusedColumn(remote_window, focused_index)
-    local current_index = Windows.PaperWM.state.windowIndex(remote_window)
-    if not current_index then
-        Windows.PaperWM.logger.e("current index not found")
-        return false
-    end
-
-    if current_index.space ~= focused_index.space then
-        Windows.PaperWM.logger.d("window is on a different space, not moving")
-        return false
-    end
-
-    Windows.moveSpecificWindowToPosition(remote_window, focused_index.col, "right")
-    return true
-end
-
 local function maybeCenterSummonOrigin(focused_window)
     local frame = focused_window:frame()
     local screen_frame = focused_window:screen():frame()
@@ -944,12 +928,36 @@ function Windows.summonWindow(remote_window)
         return
     end
 
-    if not moveSummonedWindowToFocusedColumn(remote_window, focused_index) then
+    local remote_index = Windows.PaperWM.state.windowIndex(remote_window)
+    if not remote_index then
+        Windows.PaperWM.logger.e("remote index not found")
         return
     end
 
-    maybeCenterSummonOrigin(focused_window)
-    remote_window:raise():focus()
+    local function continueSummon()
+        Windows.moveSpecificWindowToPosition(remote_window, focused_index.col, "right")
+        maybeCenterSummonOrigin(focused_window)
+        remote_window:raise():focus()
+    end
+
+    if remote_index.space ~= focused_index.space then
+        local target_space_index = Windows.PaperWM.space.MissionControl:getSpaceIndex(focused_index.space)
+        if not target_space_index then
+            Windows.PaperWM.logger.e("summon window failed: target space not found")
+            return
+        end
+
+        Windows.PaperWM.space.moveWindowToSpace(target_space_index, remote_window, function(ok, reason)
+            if not ok then
+                Windows.PaperWM.logger.e(reason or "summon window failed while moving space")
+                return
+            end
+            continueSummon()
+        end)
+        return
+    end
+
+    continueSummon()
 end
 
 function Windows.moveSpecificWindowToPosition(window, target_column, lr)
