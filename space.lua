@@ -61,38 +61,58 @@ end
 
 ---move focused window to a Mission Control space
 ---@param index number space index
-function Space.moveWindowToSpace(index)
-    local focused_window = Window.focusedWindow()
+---@param window hs.window|nil
+---@param on_done fun(ok: boolean, reason: string|nil)|nil
+function Space.moveWindowToSpace(index, window, on_done)
+    local focused_window = window or Window.focusedWindow()
+    local completed = false
+    local function succeed()
+        if completed then return end
+        completed = true
+        if on_done then on_done(true) end
+    end
+    local function fail(reason)
+        if completed then return end
+        completed = true
+        if on_done then on_done(false, reason) end
+    end
+
     if not focused_window then
         Space.PaperWM.logger.d("focused window not found")
+        fail("focused window not found")
         return
     end
 
     local new_space = Space.MissionControl:getSpaceID(index)
     if not new_space then
         Space.PaperWM.logger.d("space not found")
+        fail("space not found")
         return
     end
 
     if new_space == Spaces.windowSpaces(focused_window)[1] then
         Space.PaperWM.logger.d("window already on space")
+        succeed()
         return
     end
 
     if Spaces.spaceType(new_space) ~= "user" then
         Space.PaperWM.logger.d("space is invalid")
+        fail("space is invalid")
         return
     end
 
     local old_screen = focused_window:screen()
     if not old_screen then
         Space.PaperWM.logger.d("no screen for window")
+        fail("no screen for window")
         return
     end
 
     local new_screen = Screen(Spaces.spaceDisplay(new_space))
     if not new_screen then
         Space.PaperWM.logger.d("no screen for space")
+        fail("no screen for space")
         return
     end
 
@@ -109,6 +129,7 @@ function Space.moveWindowToSpace(index)
     local ret, err = Space.MissionControl:moveWindowToSpace(focused_window, new_space)
     if not ret or err then
         Space.PaperWM.logger.e(err)
+        fail(err or "failed to move window to space")
         return
     end
 
@@ -122,14 +143,21 @@ function Space.moveWindowToSpace(index)
             -- now we can toggle it not floating, add the window, and tile new space
             Space.PaperWM.floating.toggleFloating(focused_window)
             Space.MissionControl:focusSpace(new_space, focused_window)
+            succeed()
             return true -- done
         end)
 
         local start_time = Timer.secondsSinceEpoch()
         Timer.doUntil(do_add_window, function(timer)
-            if Timer.secondsSinceEpoch() - start_time > 1 then timer:stop() end
+            if Timer.secondsSinceEpoch() - start_time > 1 then
+                timer:stop()
+                fail("timed out waiting for window to appear on destination space")
+            end
         end, Window.animationDuration)
+        return
     end
+
+    succeed()
 end
 
 return Space
