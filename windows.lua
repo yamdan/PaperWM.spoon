@@ -916,7 +916,9 @@ local function maybeCenterSummonOrigin(focused_window)
     end
 end
 
-function Windows.summonWindow(remote_window)
+function Windows.summonWindow(remote_window, lr)
+    local lr = lr or "right"
+
     local focused_window = Window.focusedWindow()
     if not focused_window then
         Windows.PaperWM.logger.d("focused window not found")
@@ -935,7 +937,7 @@ function Windows.summonWindow(remote_window)
     end
 
     local function continueSummon()
-        Windows.moveSpecificWindowToPosition(remote_window, focused_index.col, "right")
+        Windows.moveSpecificWindowToPosition(remote_window, focused_index.col, lr)
         maybeCenterSummonOrigin(focused_window)
         remote_window:raise():focus()
     end
